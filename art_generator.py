@@ -108,14 +108,36 @@ def generate_art(prompt, style="frida"):
 
         print("✅ Art generated successfully!")
 
-        # Extract the image data from the response
-        if "output" in result and "image" in result["output"]:
-            return result["output"]["image"]
-        elif "output" in result and isinstance(result["output"], str):
-            return result["output"]
-        else:
-            print(f"❌ Unexpected response format: {result}")
+        # Debug: Print the response structure
+        print(f"🔍 Response type: {type(result)}")
+        print(f"🔍 Response keys: {result.keys() if result and isinstance(result, dict) else 'Not a dict'}")
+
+        # Check if result exists
+        if result is None:
+            print("❌ No response from endpoint!")
             return None
+
+        # Extract the image data from the response
+        # ComfyUI might return different structures
+        if isinstance(result, dict):
+            if "output" in result:
+                output = result["output"]
+                if isinstance(output, dict) and "image" in output:
+                    return output["image"]
+                elif isinstance(output, str):
+                    return output
+                elif isinstance(output, list) and len(output) > 0:
+                    # Sometimes returns a list of images
+                    return output[0] if isinstance(output[0], str) else output[0].get("image")
+            # Try direct image key
+            elif "image" in result:
+                return result["image"]
+            # Try images array
+            elif "images" in result and isinstance(result["images"], list) and len(result["images"]) > 0:
+                return result["images"][0]
+
+        print(f"❌ Unexpected response format: {result}")
+        return None
 
     except Exception as e:
         print(f"❌ Error generating art: {e}")
