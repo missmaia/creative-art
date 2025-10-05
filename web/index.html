@@ -384,11 +384,28 @@
                 // Display the image
                 const img = document.getElementById('generatedImage');
 
-                // Handle base64 data (with or without data URI prefix)
-                if (data.image.startsWith('data:')) {
-                    img.src = data.image;
+                // Handle different image data formats
+                let imageData = data.image;
+
+                // If it's an array, take the first element
+                if (Array.isArray(imageData)) {
+                    imageData = imageData[0];
+                }
+
+                // If it's an object, try to find the image property
+                if (typeof imageData === 'object' && imageData !== null) {
+                    imageData = imageData.image || imageData.data || JSON.stringify(imageData);
+                }
+
+                // Now handle as string
+                if (typeof imageData === 'string') {
+                    if (imageData.startsWith('data:')) {
+                        img.src = imageData;
+                    } else {
+                        img.src = `data:image/png;base64,${imageData}`;
+                    }
                 } else {
-                    img.src = `data:image/png;base64,${data.image}`;
+                    throw new Error(`Unexpected image format: ${typeof imageData}`);
                 }
 
                 document.getElementById('resultImage').classList.add('active');
