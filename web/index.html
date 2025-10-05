@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎨 Maia's Mexican Art Machine 🌻</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Georgia', serif;
+            background: linear-gradient(135deg, #FFE66D 0%, #FF6B9D 50%, #C44569 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #FF6B9D, #FD5E53);
+            color: white;
+            padding: 40px;
+            text-align: center;
+            border-bottom: 8px solid #C44569;
+        }
+
+        .header h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.3em;
+            opacity: 0.95;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .style-selector {
+            margin-bottom: 30px;
+        }
+
+        .style-selector h2 {
+            color: #C44569;
+            margin-bottom: 15px;
+            font-size: 1.8em;
+        }
+
+        .style-buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .style-btn {
+            flex: 1;
+            min-width: 150px;
+            padding: 20px;
+            border: 3px solid #FFE66D;
+            border-radius: 15px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1.1em;
+        }
+
+        .style-btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        .style-btn.active {
+            background: linear-gradient(135deg, #FFE66D, #FFBE76);
+            border-color: #FF6B9D;
+            font-weight: bold;
+        }
+
+        .style-btn .emoji {
+            font-size: 2em;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .prompt-section {
+            margin-bottom: 30px;
+        }
+
+        .prompt-section h2 {
+            color: #C44569;
+            margin-bottom: 15px;
+            font-size: 1.8em;
+        }
+
+        #promptInput {
+            width: 100%;
+            padding: 20px;
+            font-size: 1.2em;
+            border: 3px solid #FFE66D;
+            border-radius: 15px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        #promptInput:focus {
+            outline: none;
+            border-color: #FF6B9D;
+            box-shadow: 0 0 20px rgba(255, 107, 157, 0.3);
+        }
+
+        .example-prompts {
+            margin-top: 15px;
+        }
+
+        .example-prompts p {
+            color: #666;
+            margin-bottom: 10px;
+            font-size: 0.95em;
+        }
+
+        .example-chip {
+            display: inline-block;
+            background: #f0f0f0;
+            padding: 8px 15px;
+            margin: 5px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.2s ease;
+        }
+
+        .example-chip:hover {
+            background: #FFE66D;
+            transform: scale(1.05);
+        }
+
+        .generate-btn {
+            width: 100%;
+            padding: 25px;
+            font-size: 1.5em;
+            background: linear-gradient(135deg, #FF6B9D, #FD5E53);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(255, 107, 157, 0.4);
+        }
+
+        .generate-btn:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(255, 107, 157, 0.6);
+        }
+
+        .generate-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .result-section {
+            margin-top: 40px;
+            text-align: center;
+        }
+
+        .loading {
+            display: none;
+            padding: 40px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 6px solid #FFE66D;
+            border-top: 6px solid #FF6B9D;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .result-image {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .result-image.active {
+            display: block;
+        }
+
+        .result-image img {
+            max-width: 100%;
+            border-radius: 15px;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.3);
+        }
+
+        .download-btn {
+            margin-top: 20px;
+            padding: 15px 40px;
+            font-size: 1.2em;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .download-btn:hover {
+            background: #45a049;
+            transform: scale(1.05);
+        }
+
+        .error {
+            display: none;
+            background: #ff6b6b;
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .error.active {
+            display: block;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 30px;
+            background: #f5f5f5;
+            border-top: 3px solid #FFE66D;
+        }
+
+        .footer p {
+            color: #666;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 Maia's Mexican Art Machine 🌻</h1>
+            <p>Create beautiful AI art inspired by Frida Kahlo & Mexican Folk Art!</p>
+        </div>
+
+        <div class="content">
+            <!-- Style Selector -->
+            <div class="style-selector">
+                <h2>Choose Your Art Style:</h2>
+                <div class="style-buttons">
+                    <button class="style-btn active" data-style="frida">
+                        <span class="emoji">🌺</span>
+                        <div>Frida Kahlo</div>
+                        <small>Vibrant & Nature</small>
+                    </button>
+                    <button class="style-btn" data-style="mural">
+                        <span class="emoji">🎭</span>
+                        <div>Muralist</div>
+                        <small>Bold & Cultural</small>
+                    </button>
+                    <button class="style-btn" data-style="folk">
+                        <span class="emoji">🎪</span>
+                        <div>Folk Art</div>
+                        <small>Traditional & Festive</small>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Prompt Input -->
+            <div class="prompt-section">
+                <h2>What Do You Want to Create?</h2>
+                <textarea
+                    id="promptInput"
+                    placeholder="Describe your art idea... (e.g., 'a garden with butterflies and flowers')"
+                ></textarea>
+
+                <div class="example-prompts">
+                    <p><strong>Click for inspiration:</strong></p>
+                    <span class="example-chip" data-prompt="a garden with butterflies and monarch wings">Garden with Butterflies</span>
+                    <span class="example-chip" data-prompt="self-portrait with sunflowers">Sunflower Self-Portrait</span>
+                    <span class="example-chip" data-prompt="Day of the Dead celebration altar">Day of the Dead</span>
+                    <span class="example-chip" data-prompt="magical forest with exotic animals">Magical Forest</span>
+                    <span class="example-chip" data-prompt="traditional fiesta with papel picado">Colorful Fiesta</span>
+                </div>
+            </div>
+
+            <!-- Generate Button -->
+            <button class="generate-btn" id="generateBtn">
+                ✨ Generate Art! ✨
+            </button>
+
+            <!-- Loading State -->
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <h3>🎨 Creating your masterpiece...</h3>
+                <p>This may take 30-60 seconds. The AI is painting!</p>
+            </div>
+
+            <!-- Error Message -->
+            <div class="error" id="error">
+                <h3>😞 Oops! Something went wrong.</h3>
+                <p id="errorMessage"></p>
+            </div>
+
+            <!-- Result -->
+            <div class="result-section">
+                <div class="result-image" id="resultImage">
+                    <h2>Your Mexican Masterpiece!</h2>
+                    <img id="generatedImage" src="" alt="Generated Art">
+                    <br>
+                    <button class="download-btn" id="downloadBtn">📥 Download Image</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Built with ❤️ by Maia (Age 8!)</p>
+            <p>Powered by RunPod AI & Flux Model</p>
+            <p>🌟 Learning to code and create art! 🌟</p>
+        </div>
+    </div>
+
+    <script>
+        let selectedStyle = 'frida';
+        let currentImageData = null;
+
+        // Style selection
+        document.querySelectorAll('.style-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.style-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                selectedStyle = this.dataset.style;
+            });
+        });
+
+        // Example prompts
+        document.querySelectorAll('.example-chip').forEach(chip => {
+            chip.addEventListener('click', function() {
+                document.getElementById('promptInput').value = this.dataset.prompt;
+            });
+        });
+
+        // Generate button
+        document.getElementById('generateBtn').addEventListener('click', async function() {
+            const prompt = document.getElementById('promptInput').value.trim();
+
+            if (!prompt) {
+                alert('Please enter what you want to create!');
+                return;
+            }
+
+            // Hide previous results
+            document.getElementById('resultImage').classList.remove('active');
+            document.getElementById('error').classList.remove('active');
+
+            // Show loading
+            document.getElementById('loading').classList.add('active');
+            this.disabled = true;
+
+            try {
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        style: selectedStyle
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to generate art');
+                }
+
+                // Display the image
+                currentImageData = data.image;
+                const img = document.getElementById('generatedImage');
+                img.src = `data:image/png;base64,${data.image}`;
+                document.getElementById('resultImage').classList.add('active');
+
+            } catch (error) {
+                document.getElementById('errorMessage').textContent = error.message;
+                document.getElementById('error').classList.add('active');
+                console.error('Error:', error);
+            } finally {
+                document.getElementById('loading').classList.remove('active');
+                this.disabled = false;
+            }
+        });
+
+        // Download button
+        document.getElementById('downloadBtn').addEventListener('click', function() {
+            if (!currentImageData) return;
+
+            const link = document.createElement('a');
+            link.href = `data:image/png;base64,${currentImageData}`;
+            link.download = `maia-mexican-art-${Date.now()}.png`;
+            link.click();
+        });
+    </script>
+</body>
+</html>

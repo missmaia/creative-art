@@ -1,0 +1,31 @@
+# 🔒 Keep secrets safe!
+# API keys and sensitive information
+.env
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# Generated art images (you can choose to track or ignore)
+generated_art_*.png
+generated_art_*.jpg
+
+# macOS system files
+.DS_Store
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Vercel
+.vercel
