@@ -75,78 +75,81 @@ class handler(BaseHTTPRequestHandler):
                 }
             }
 
-            # Call RunPod API directly using /run endpoint
-            api_url = f"https://api.runpod.ai/v2/{endpoint_id}/run"
+            # Try the /runsync endpoint first (synchronous, simpler)
+            api_url = f"https://api.runpod.ai/v2/{endpoint_id}/runsync"
             headers = {
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json"
             }
 
-            # Send the request to start the job
-            response = requests.post(api_url, json=payload, headers=headers)
+            # Send the request
+            try:
+                response = requests.post(
+                    api_url,
+                    json=payload,
+                    headers=headers,
+                    timeout=120  # 2 minute timeout
+                )
+            except requests.exceptions.Timeout:
+                self.send_error_response(
+                    "Request timed out. The endpoint might be cold-starting. Please try again!",
+                    500
+                )
+                return
+            except Exception as e:
+                self.send_error_response(
+                    f"Request failed: {str(e)}",
+                    500
+                )
+                return
 
             if response.status_code != 200:
+                # Try to get more details from the error
+                error_detail = response.text
+                try:
+                    error_json = response.json()
+                    error_detail = json.dumps(error_json, indent=2)
+                except:
+                    pass
+
                 self.send_error_response(
-                    f"RunPod API error: {response.status_code} - {response.text}",
+                    f"RunPod API error {response.status_code}: {error_detail}. Endpoint ID: {endpoint_id}. Make sure your RunPod workers are running (green 'idle' status in console)!",
                     500
                 )
                 return
 
-            result_data = response.json()
-            job_id = result_data.get("id")
-
-            if not job_id:
+            # Parse the response
+            try:
+                result_data = response.json()
+            except json.JSONDecodeError:
                 self.send_error_response(
-                    f"No job ID returned: {result_data}",
+                    f"Invalid JSON response: {response.text[:200]}",
                     500
                 )
                 return
 
-            # Poll for the result (check every 2 seconds, max 5 minutes)
-            status_url = f"https://api.runpod.ai/v2/{endpoint_id}/status/{job_id}"
-            max_attempts = 150  # 5 minutes / 2 seconds
+            # Extract image from runsync response
+            image_data = None
 
-            for attempt in range(max_attempts):
-                time.sleep(2)  # Wait 2 seconds between checks
+            # Check different possible response formats
+            if "output" in result_data:
+                output = result_data["output"]
+                if isinstance(output, dict):
+                    # Try various keys
+                    image_data = (output.get("image") or
+                                output.get("images") or
+                                output.get("image_base64") or
+                                output.get("result"))
+                elif isinstance(output, list) and len(output) > 0:
+                    image_data = output[0]
+                elif isinstance(output, str):
+                    image_data = output
+            elif "result" in result_data:
+                image_data = result_data["result"]
 
-                status_response = requests.get(status_url, headers=headers)
-                if status_response.status_code != 200:
-                    continue
-
-                status_data = status_response.json()
-                status = status_data.get("status")
-
-                if status == "COMPLETED":
-                    # Extract the image from the completed job
-                    output = status_data.get("output")
-                    image_data = None
-
-                    if isinstance(output, dict) and "image" in output:
-                        image_data = output["image"]
-                    elif isinstance(output, str):
-                        image_data = output
-                    elif isinstance(output, list) and len(output) > 0:
-                        image_data = output[0]
-
-                    if not image_data:
-                        self.send_error_response(
-                            f"No image in completed job: {output}",
-                            500
-                        )
-                        return
-                    break
-
-                elif status in ["FAILED", "CANCELLED"]:
-                    error_msg = status_data.get("error", "Unknown error")
-                    self.send_error_response(
-                        f"Job {status.lower()}: {error_msg}",
-                        500
-                    )
-                    return
-            else:
-                # Timeout - job took too long
+            if not image_data:
                 self.send_error_response(
-                    "Timeout: Art generation took too long. Please try again!",
+                    f"No image in response. Full response: {json.dumps(result_data, indent=2)[:500]}",
                     500
                 )
                 return
