@@ -112,7 +112,7 @@ class handler(BaseHTTPRequestHandler):
                         },
                         "30": {
                             "inputs": {
-                                "ckpt_name": "flux1-schnell.safetensors"
+                                "ckpt_name": "flux1-dev-fp8.safetensors"
                             },
                             "class_type": "CheckpointLoaderSimple",
                             "_meta": {
@@ -122,7 +122,7 @@ class handler(BaseHTTPRequestHandler):
                         "31": {
                             "inputs": {
                                 "seed": int(time.time()),
-                                "steps": 4,
+                                "steps": 20,
                                 "cfg": 1.0,
                                 "sampler_name": "euler",
                                 "scheduler": "simple",
