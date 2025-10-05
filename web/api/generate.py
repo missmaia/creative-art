@@ -64,14 +64,76 @@ class handler(BaseHTTPRequestHandler):
             # Enhance prompt with Mexican art style
             enhanced_prompt = enhance_prompt_with_style(prompt, style)
 
-            # Prepare the request for RunPod ComfyUI
+            # Prepare the ComfyUI workflow for Flux
+            # This is the proper format that ComfyUI expects!
             payload = {
                 "input": {
-                    "prompt": enhanced_prompt,
-                    "num_inference_steps": 25,
-                    "guidance_scale": 7.5,
-                    "width": 1024,
-                    "height": 1024,
+                    "workflow": {
+                        "30": {
+                            "inputs": {
+                                "ckpt_name": "flux1-schnell.safetensors"  # or flux1-dev-fp8.safetensors
+                            },
+                            "class_type": "CheckpointLoaderSimple"
+                        },
+                        "27": {
+                            "inputs": {
+                                "width": 1024,
+                                "height": 1024,
+                                "batch_size": 1
+                            },
+                            "class_type": "EmptySD3LatentImage"
+                        },
+                        "6": {
+                            "inputs": {
+                                "text": enhanced_prompt,  # Your Mexican art prompt goes here!
+                                "clip": ["30", 1]
+                            },
+                            "class_type": "CLIPTextEncode"
+                        },
+                        "33": {
+                            "inputs": {
+                                "text": "",  # Negative prompt (empty)
+                                "clip": ["30", 1]
+                            },
+                            "class_type": "CLIPTextEncode"
+                        },
+                        "35": {
+                            "inputs": {
+                                "guidance": 3.5,
+                                "conditioning": ["6", 0]
+                            },
+                            "class_type": "FluxGuidance"
+                        },
+                        "31": {
+                            "inputs": {
+                                "seed": int(time.time()),  # Random seed based on time
+                                "steps": 20,  # Number of steps
+                                "cfg": 1,
+                                "sampler_name": "euler",
+                                "scheduler": "simple",
+                                "denoise": 1,
+                                "model": ["30", 0],
+                                "positive": ["35", 0],
+                                "negative": ["33", 0],
+                                "latent_image": ["27", 0]
+                            },
+                            "class_type": "KSampler"
+                        },
+                        "8": {
+                            "inputs": {
+                                "samples": ["31", 0],
+                                "vae": ["30", 2]
+                            },
+                            "class_type": "VAEDecode"
+                        },
+                        "9": {
+                            "inputs": {
+                                "filename_prefix": "maia_art",
+                                "images": ["8", 0]
+                            },
+                            "class_type": "SaveImage"
+                        }
+                    }
                 }
             }
 
@@ -128,28 +190,42 @@ class handler(BaseHTTPRequestHandler):
                 )
                 return
 
-            # Extract image from runsync response
+            # Extract image from ComfyUI response
             image_data = None
 
-            # Check different possible response formats
+            # ComfyUI typically returns images in output.message or output.images
             if "output" in result_data:
                 output = result_data["output"]
+
+                # Try different ComfyUI response formats
                 if isinstance(output, dict):
-                    # Try various keys
-                    image_data = (output.get("image") or
-                                output.get("images") or
-                                output.get("image_base64") or
-                                output.get("result"))
+                    # Format 1: output.message (base64 string)
+                    if "message" in output:
+                        image_data = output["message"]
+                    # Format 2: output.images (list of base64 strings)
+                    elif "images" in output and isinstance(output["images"], list) and len(output["images"]) > 0:
+                        image_data = output["images"][0]
+                    # Format 3: output.image (single base64 string)
+                    elif "image" in output:
+                        image_data = output["image"]
+                    # Format 4: Any other string value
+                    else:
+                        # Try to find any base64-looking string in the output
+                        for key, value in output.items():
+                            if isinstance(value, str) and len(value) > 100:
+                                image_data = value
+                                break
+
+                # If output is a list, take first element
                 elif isinstance(output, list) and len(output) > 0:
                     image_data = output[0]
+                # If output is directly a string
                 elif isinstance(output, str):
                     image_data = output
-            elif "result" in result_data:
-                image_data = result_data["result"]
 
             if not image_data:
                 self.send_error_response(
-                    f"No image in response. Full response: {json.dumps(result_data, indent=2)[:500]}",
+                    f"No image in response. Full response structure: {json.dumps(result_data, indent=2)[:1000]}",
                     500
                 )
                 return
