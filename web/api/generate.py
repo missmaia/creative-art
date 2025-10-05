@@ -64,10 +64,100 @@ class handler(BaseHTTPRequestHandler):
             # Enhance prompt with Mexican art style
             enhanced_prompt = enhance_prompt_with_style(prompt, style)
 
-            # Prepare the simple input format that RunPod expects
+            # Prepare the ComfyUI workflow for Flux Schnell
+            # This is based on the official RunPod ComfyUI worker format
             payload = {
                 "input": {
-                    "prompt": enhanced_prompt
+                    "workflow": {
+                        "6": {
+                            "inputs": {
+                                "text": enhanced_prompt,
+                                "clip": ["30", 1]
+                            },
+                            "class_type": "CLIPTextEncode",
+                            "_meta": {
+                                "title": "CLIP Text Encode (Positive Prompt)"
+                            }
+                        },
+                        "8": {
+                            "inputs": {
+                                "samples": ["31", 0],
+                                "vae": ["30", 2]
+                            },
+                            "class_type": "VAEDecode",
+                            "_meta": {
+                                "title": "VAE Decode"
+                            }
+                        },
+                        "9": {
+                            "inputs": {
+                                "filename_prefix": "maia_art",
+                                "images": ["8", 0]
+                            },
+                            "class_type": "SaveImage",
+                            "_meta": {
+                                "title": "Save Image"
+                            }
+                        },
+                        "27": {
+                            "inputs": {
+                                "width": 1024,
+                                "height": 1024,
+                                "batch_size": 1
+                            },
+                            "class_type": "EmptySD3LatentImage",
+                            "_meta": {
+                                "title": "Empty Latent Image"
+                            }
+                        },
+                        "30": {
+                            "inputs": {
+                                "ckpt_name": "flux1-schnell.safetensors"
+                            },
+                            "class_type": "CheckpointLoaderSimple",
+                            "_meta": {
+                                "title": "Load Checkpoint"
+                            }
+                        },
+                        "31": {
+                            "inputs": {
+                                "seed": int(time.time()),
+                                "steps": 4,
+                                "cfg": 1.0,
+                                "sampler_name": "euler",
+                                "scheduler": "simple",
+                                "denoise": 1.0,
+                                "model": ["30", 0],
+                                "positive": ["35", 0],
+                                "negative": ["33", 0],
+                                "latent_image": ["27", 0]
+                            },
+                            "class_type": "KSampler",
+                            "_meta": {
+                                "title": "KSampler"
+                            }
+                        },
+                        "33": {
+                            "inputs": {
+                                "text": "",
+                                "clip": ["30", 1]
+                            },
+                            "class_type": "CLIPTextEncode",
+                            "_meta": {
+                                "title": "CLIP Text Encode (Negative Prompt)"
+                            }
+                        },
+                        "35": {
+                            "inputs": {
+                                "guidance": 3.5,
+                                "conditioning": ["6", 0]
+                            },
+                            "class_type": "FluxGuidance",
+                            "_meta": {
+                                "title": "Flux Guidance"
+                            }
+                        }
+                    }
                 }
             }
 
