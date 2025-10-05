@@ -212,25 +212,11 @@
 
         .result-image img {
             max-width: 100%;
-            border-radius: 15px;
-            box-shadow: 0 15px 50px rgba(0,0,0,0.3);
-        }
-
-        .download-btn {
-            margin-top: 20px;
-            padding: 15px 40px;
-            font-size: 1.2em;
-            background: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .download-btn:hover {
-            background: #45a049;
-            transform: scale(1.05);
+            width: 100%;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(255, 107, 157, 0.4);
+            border: 5px solid #FFE66D;
+            margin: 20px 0;
         }
 
         .error {
@@ -328,10 +314,8 @@
             <!-- Result -->
             <div class="result-section">
                 <div class="result-image" id="resultImage">
-                    <h2>Your Mexican Masterpiece!</h2>
+                    <h2>✨ Your Mexican Masterpiece! ✨</h2>
                     <img id="generatedImage" src="" alt="Generated Art">
-                    <br>
-                    <button class="download-btn" id="downloadBtn">📥 Download Image</button>
                 </div>
             </div>
         </div>
@@ -345,7 +329,6 @@
 
     <script>
         let selectedStyle = 'frida';
-        let currentImageData = null;
 
         // Style selection
         document.querySelectorAll('.style-btn').forEach(btn => {
@@ -399,9 +382,15 @@
                 }
 
                 // Display the image
-                currentImageData = data.image;
                 const img = document.getElementById('generatedImage');
-                img.src = `data:image/png;base64,${data.image}`;
+
+                // Handle base64 data (with or without data URI prefix)
+                if (data.image.startsWith('data:')) {
+                    img.src = data.image;
+                } else {
+                    img.src = `data:image/png;base64,${data.image}`;
+                }
+
                 document.getElementById('resultImage').classList.add('active');
 
             } catch (error) {
@@ -412,16 +401,6 @@
                 document.getElementById('loading').classList.remove('active');
                 this.disabled = false;
             }
-        });
-
-        // Download button
-        document.getElementById('downloadBtn').addEventListener('click', function() {
-            if (!currentImageData) return;
-
-            const link = document.createElement('a');
-            link.href = `data:image/png;base64,${currentImageData}`;
-            link.download = `maia-mexican-art-${Date.now()}.png`;
-            link.click();
         });
     </script>
 </body>
