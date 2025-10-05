@@ -56,9 +56,9 @@ class handler(BaseHTTPRequestHandler):
                 )
                 return
 
-            # Set up RunPod
-            runpod.api_key = api_key
-            endpoint = runpod.Endpoint(endpoint_id)
+            # Set up RunPod - make sure values are strings, not bytes!
+            runpod.api_key = str(api_key).strip()
+            endpoint = runpod.Endpoint(str(endpoint_id).strip())
 
             # Enhance prompt with Mexican art style
             enhanced_prompt = enhance_prompt_with_style(prompt, style)
