@@ -1,6 +1,5 @@
 {
   "version": 2,
-  "name": "maias-mexican-art-machine",
   "builds": [
     {
       "src": "web/index.html",
@@ -20,9 +19,5 @@
       "src": "/api/(.*)",
       "dest": "/web/api/$1.py"
     }
-  ],
-  "env": {
-    "RUNPOD_API_KEY": "@runpod-api-key",
-    "RUNPOD_ENDPOINT_ID": "@runpod-endpoint-id"
-  }
+  ]
 }
