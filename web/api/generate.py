@@ -5,7 +5,8 @@ This is the "backend" that the website calls to generate art!
 
 import os
 import json
-import runpod
+import time
+import requests
 from http.server import BaseHTTPRequestHandler
 
 
@@ -56,14 +57,14 @@ class handler(BaseHTTPRequestHandler):
                 )
                 return
 
-            # Set up RunPod - make sure values are strings, not bytes!
-            runpod.api_key = str(api_key).strip()
-            endpoint = runpod.Endpoint(str(endpoint_id).strip())
+            # Clean up the credentials
+            api_key = str(api_key).strip()
+            endpoint_id = str(endpoint_id).strip()
 
             # Enhance prompt with Mexican art style
             enhanced_prompt = enhance_prompt_with_style(prompt, style)
 
-            # Prepare the request for RunPod
+            # Prepare the request for RunPod ComfyUI
             payload = {
                 "input": {
                     "prompt": enhanced_prompt,
@@ -74,18 +75,78 @@ class handler(BaseHTTPRequestHandler):
                 }
             }
 
-            # Generate the art! (synchronous - wait for result)
-            result = endpoint.run_sync(payload, timeout=300)
+            # Call RunPod API directly using /run endpoint
+            api_url = f"https://api.runpod.ai/v2/{endpoint_id}/run"
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            }
 
-            # Extract image data
-            image_data = None
-            if "output" in result and "image" in result["output"]:
-                image_data = result["output"]["image"]
-            elif "output" in result and isinstance(result["output"], str):
-                image_data = result["output"]
-            else:
+            # Send the request to start the job
+            response = requests.post(api_url, json=payload, headers=headers)
+
+            if response.status_code != 200:
                 self.send_error_response(
-                    f"Unexpected response from AI: {result}",
+                    f"RunPod API error: {response.status_code} - {response.text}",
+                    500
+                )
+                return
+
+            result_data = response.json()
+            job_id = result_data.get("id")
+
+            if not job_id:
+                self.send_error_response(
+                    f"No job ID returned: {result_data}",
+                    500
+                )
+                return
+
+            # Poll for the result (check every 2 seconds, max 5 minutes)
+            status_url = f"https://api.runpod.ai/v2/{endpoint_id}/status/{job_id}"
+            max_attempts = 150  # 5 minutes / 2 seconds
+
+            for attempt in range(max_attempts):
+                time.sleep(2)  # Wait 2 seconds between checks
+
+                status_response = requests.get(status_url, headers=headers)
+                if status_response.status_code != 200:
+                    continue
+
+                status_data = status_response.json()
+                status = status_data.get("status")
+
+                if status == "COMPLETED":
+                    # Extract the image from the completed job
+                    output = status_data.get("output")
+                    image_data = None
+
+                    if isinstance(output, dict) and "image" in output:
+                        image_data = output["image"]
+                    elif isinstance(output, str):
+                        image_data = output
+                    elif isinstance(output, list) and len(output) > 0:
+                        image_data = output[0]
+
+                    if not image_data:
+                        self.send_error_response(
+                            f"No image in completed job: {output}",
+                            500
+                        )
+                        return
+                    break
+
+                elif status in ["FAILED", "CANCELLED"]:
+                    error_msg = status_data.get("error", "Unknown error")
+                    self.send_error_response(
+                        f"Job {status.lower()}: {error_msg}",
+                        500
+                    )
+                    return
+            else:
+                # Timeout - job took too long
+                self.send_error_response(
+                    "Timeout: Art generation took too long. Please try again!",
                     500
                 )
                 return
