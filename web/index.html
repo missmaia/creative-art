@@ -232,6 +232,25 @@
             display: block;
         }
 
+        .save-btn {
+            margin-top: 20px;
+            padding: 20px 40px;
+            font-size: 1.3em;
+            background: linear-gradient(135deg, #4ECDC4, #44A08D);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(78, 205, 196, 0.4);
+        }
+
+        .save-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(78, 205, 196, 0.6);
+        }
+
         .footer {
             text-align: center;
             padding: 30px;
@@ -316,6 +335,9 @@
                 <div class="result-image" id="resultImage">
                     <h2>✨ Your Mexican Masterpiece! ✨</h2>
                     <img id="generatedImage" src="" alt="Generated Art">
+                    <button class="save-btn" id="saveBtn" style="display: none;">
+                        💾 Save Your Art! 💾
+                    </button>
                 </div>
             </div>
         </div>
@@ -409,6 +431,7 @@
                 }
 
                 document.getElementById('resultImage').classList.add('active');
+                document.getElementById('saveBtn').style.display = 'inline-block';
 
             } catch (error) {
                 document.getElementById('errorMessage').textContent = error.message;
@@ -418,6 +441,19 @@
                 document.getElementById('loading').classList.remove('active');
                 this.disabled = false;
             }
+        });
+
+        // Save button functionality
+        document.getElementById('saveBtn').addEventListener('click', function() {
+            const img = document.getElementById('generatedImage');
+            if (!img.src) return;
+
+            const link = document.createElement('a');
+            link.href = img.src;
+            link.download = `maia-mexican-art-${Date.now()}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         });
     </script>
 </body>
