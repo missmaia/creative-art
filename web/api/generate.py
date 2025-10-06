@@ -229,7 +229,7 @@ class handler(BaseHTTPRequestHandler):
                     # Format 2: output.images (list of base64 strings)
                     elif "images" in output and isinstance(output["images"], list) and len(output["images"]) > 0:
                         image_data = output["images"][0]
-                    # Format 3: output.image (single base64 string)
+                    # Format 3: output.image (single base64 string or object)
                     elif "image" in output:
                         image_data = output["image"]
                     # Format 4: Any other string value
@@ -247,7 +247,14 @@ class handler(BaseHTTPRequestHandler):
                 elif isinstance(output, str):
                     image_data = output
 
-            if not image_data:
+            # If image_data is a dict with 'data' field, extract it
+            if isinstance(image_data, dict):
+                if "data" in image_data:
+                    image_data = image_data["data"]
+                elif "image" in image_data:
+                    image_data = image_data["image"]
+
+            if not image_data or not isinstance(image_data, str):
                 self.send_error_response(
                     f"No image in response. Full response structure: {json.dumps(result_data, indent=2)[:1000]}",
                     500
