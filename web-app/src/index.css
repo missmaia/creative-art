@@ -1,0 +1,9 @@
+@import "tailwindcss";
+
+@theme {
+  --color-mexican-pink: #FF6B9D;
+  --color-mexican-yellow: #FFE66D;
+  --color-mexican-orange: #FD5E53;
+  --color-mexican-purple: #A44A9F;
+  --color-mexican-teal: #4ECDC4;
+}
