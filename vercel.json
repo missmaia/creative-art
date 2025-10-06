@@ -1,12 +1,25 @@
 {
-  "framework": "vite",
-  "buildCommand": "cd web-app && npm install && npm run build",
-  "outputDirectory": "web-app/dist",
-  "installCommand": "echo 'Skipping root install'",
-  "rewrites": [
+  "builds": [
     {
-      "source": "/api/(.*)",
-      "destination": "/web/api/$1.py"
+      "src": "web-app/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "web-app/dist"
+      }
+    },
+    {
+      "src": "web/api/*.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/web/api/$1.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/web-app/dist/$1"
     }
   ]
 }
