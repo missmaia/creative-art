@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, Palette, Heart, Loader2 } from 'lucide-react'
+import { Sparkles, Palette, Heart, Loader2, Download } from 'lucide-react'
 import './App.css'
 
 const MEXICAN_STYLES = [
@@ -97,6 +97,17 @@ function App() {
     } finally {
       setIsGenerating(false)
     }
+  }
+
+  const handleDownload = () => {
+    if (!generatedImage) return
+
+    const link = document.createElement('a')
+    link.href = generatedImage
+    link.download = `maia-mexican-art-${Date.now()}.png`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
   return (
@@ -295,6 +306,21 @@ function App() {
                   className="w-full h-auto"
                 />
               </motion.div>
+
+              {/* Download Button */}
+              <motion.button
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleDownload}
+                className="mt-6 px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center justify-center gap-3 mx-auto"
+              >
+                <Download className="w-6 h-6" />
+                Save Your Masterpiece!
+                <Download className="w-6 h-6" />
+              </motion.button>
             </motion.div>
           )}
         </AnimatePresence>
