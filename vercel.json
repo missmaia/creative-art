@@ -6,10 +6,5 @@
       "source": "/api/(.*)",
       "destination": "/web/api/$1.py"
     }
-  ],
-  "functions": {
-    "web/api/*.py": {
-      "runtime": "python3.9"
-    }
-  }
+  ]
 }
