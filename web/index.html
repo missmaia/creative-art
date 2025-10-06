@@ -315,7 +315,7 @@
             <div class="style-selector" id="modelSelector">
                 <h2>Choose Your AI Model:</h2>
                 <div class="style-buttons">
-                    <button class="style-btn active" data-model="sdxl-turbo">
+                    <button class="style-btn" data-model="sdxl-turbo">
                         <span class="emoji">⚡</span>
                         <div>SDXL Turbo</div>
                         <small>Ultra-Fast & Cheap! (~3 sec)</small>
@@ -325,7 +325,7 @@
                         <div>SDXL Lightning</div>
                         <small>Fast & Balanced (~8 sec)</small>
                     </button>
-                    <button class="style-btn" data-model="flux-dev">
+                    <button class="style-btn active" data-model="flux-dev">
                         <span class="emoji">✨</span>
                         <div>Flux Dev</div>
                         <small>Premium Quality (~40 sec)</small>
@@ -391,7 +391,7 @@
 
     <script>
         let selectedStyle = 'frida';
-        let selectedModel = 'sdxl-turbo';  // Default to cheapest model
+        let selectedModel = 'flux-dev';  // Default to Flux Dev (what's on RunPod now)
         let selectedOutput = 'image';  // Default to image mode
 
         // Style selection
