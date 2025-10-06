@@ -24,6 +24,224 @@ def enhance_prompt_with_style(prompt, style="frida"):
     return f"{prompt}, {style_modifier}"
 
 
+def get_sdxl_turbo_workflow(enhanced_prompt):
+    """Generate ComfyUI workflow for SDXL Turbo (ultra-fast, 1-4 steps)."""
+    return {
+        "6": {
+            "inputs": {
+                "text": enhanced_prompt,
+                "clip": ["4", 1]
+            },
+            "class_type": "CLIPTextEncode",
+            "_meta": {"title": "CLIP Text Encode (Positive)"}
+        },
+        "7": {
+            "inputs": {
+                "text": "blurry, low quality, distorted",
+                "clip": ["4", 1]
+            },
+            "class_type": "CLIPTextEncode",
+            "_meta": {"title": "CLIP Text Encode (Negative)"}
+        },
+        "3": {
+            "inputs": {
+                "seed": int(time.time()),
+                "steps": 4,  # SDXL Turbo optimized for 1-4 steps
+                "cfg": 2.0,
+                "sampler_name": "euler_ancestral",
+                "scheduler": "simple",
+                "denoise": 1.0,
+                "model": ["4", 0],
+                "positive": ["6", 0],
+                "negative": ["7", 0],
+                "latent_image": ["5", 0]
+            },
+            "class_type": "KSampler",
+            "_meta": {"title": "KSampler"}
+        },
+        "4": {
+            "inputs": {
+                "ckpt_name": "sd_xl_turbo_1.0.safetensors"  # SDXL Turbo checkpoint
+            },
+            "class_type": "CheckpointLoaderSimple",
+            "_meta": {"title": "Load Checkpoint"}
+        },
+        "5": {
+            "inputs": {
+                "width": 1024,
+                "height": 1024,
+                "batch_size": 1
+            },
+            "class_type": "EmptyLatentImage",
+            "_meta": {"title": "Empty Latent Image"}
+        },
+        "8": {
+            "inputs": {
+                "samples": ["3", 0],
+                "vae": ["4", 2]
+            },
+            "class_type": "VAEDecode",
+            "_meta": {"title": "VAE Decode"}
+        },
+        "9": {
+            "inputs": {
+                "filename_prefix": "maia_art",
+                "images": ["8", 0]
+            },
+            "class_type": "SaveImage",
+            "_meta": {"title": "Save Image"}
+        }
+    }
+
+
+def get_sdxl_lightning_workflow(enhanced_prompt):
+    """Generate ComfyUI workflow for SDXL Lightning (fast, 4-8 steps)."""
+    return {
+        "6": {
+            "inputs": {
+                "text": enhanced_prompt,
+                "clip": ["4", 1]
+            },
+            "class_type": "CLIPTextEncode",
+            "_meta": {"title": "CLIP Text Encode (Positive)"}
+        },
+        "7": {
+            "inputs": {
+                "text": "blurry, low quality, distorted",
+                "clip": ["4", 1]
+            },
+            "class_type": "CLIPTextEncode",
+            "_meta": {"title": "CLIP Text Encode (Negative)"}
+        },
+        "3": {
+            "inputs": {
+                "seed": int(time.time()),
+                "steps": 8,  # SDXL Lightning optimized for 4-8 steps
+                "cfg": 2.5,
+                "sampler_name": "euler",
+                "scheduler": "sgm_uniform",  # Lightning uses sgm_uniform
+                "denoise": 1.0,
+                "model": ["4", 0],
+                "positive": ["6", 0],
+                "negative": ["7", 0],
+                "latent_image": ["5", 0]
+            },
+            "class_type": "KSampler",
+            "_meta": {"title": "KSampler"}
+        },
+        "4": {
+            "inputs": {
+                "ckpt_name": "sdxl_lightning_8step.safetensors"  # SDXL Lightning checkpoint
+            },
+            "class_type": "CheckpointLoaderSimple",
+            "_meta": {"title": "Load Checkpoint"}
+        },
+        "5": {
+            "inputs": {
+                "width": 1024,
+                "height": 1024,
+                "batch_size": 1
+            },
+            "class_type": "EmptyLatentImage",
+            "_meta": {"title": "Empty Latent Image"}
+        },
+        "8": {
+            "inputs": {
+                "samples": ["3", 0],
+                "vae": ["4", 2]
+            },
+            "class_type": "VAEDecode",
+            "_meta": {"title": "VAE Decode"}
+        },
+        "9": {
+            "inputs": {
+                "filename_prefix": "maia_art",
+                "images": ["8", 0]
+            },
+            "class_type": "SaveImage",
+            "_meta": {"title": "Save Image"}
+        }
+    }
+
+
+def get_flux_dev_workflow(enhanced_prompt):
+    """Generate ComfyUI workflow for Flux Dev (premium quality, slower)."""
+    return {
+        "6": {
+            "inputs": {
+                "text": enhanced_prompt,
+                "clip": ["30", 1]
+            },
+            "class_type": "CLIPTextEncode",
+            "_meta": {"title": "CLIP Text Encode (Positive Prompt)"}
+        },
+        "8": {
+            "inputs": {
+                "samples": ["31", 0],
+                "vae": ["30", 2]
+            },
+            "class_type": "VAEDecode",
+            "_meta": {"title": "VAE Decode"}
+        },
+        "9": {
+            "inputs": {
+                "filename_prefix": "maia_art",
+                "images": ["8", 0]
+            },
+            "class_type": "SaveImage",
+            "_meta": {"title": "Save Image"}
+        },
+        "27": {
+            "inputs": {
+                "width": 1024,
+                "height": 1024,
+                "batch_size": 1
+            },
+            "class_type": "EmptySD3LatentImage",
+            "_meta": {"title": "Empty Latent Image"}
+        },
+        "30": {
+            "inputs": {
+                "ckpt_name": "flux1-dev-fp8.safetensors"
+            },
+            "class_type": "CheckpointLoaderSimple",
+            "_meta": {"title": "Load Checkpoint"}
+        },
+        "31": {
+            "inputs": {
+                "seed": int(time.time()),
+                "steps": 20,
+                "cfg": 1.0,
+                "sampler_name": "euler",
+                "scheduler": "simple",
+                "denoise": 1.0,
+                "model": ["30", 0],
+                "positive": ["35", 0],
+                "negative": ["33", 0],
+                "latent_image": ["27", 0]
+            },
+            "class_type": "KSampler",
+            "_meta": {"title": "KSampler"}
+        },
+        "33": {
+            "inputs": {
+                "text": "",
+                "clip": ["30", 1]
+            },
+            "class_type": "CLIPTextEncode",
+            "_meta": {"title": "CLIP Text Encode (Negative Prompt)"}
+        },
+        "35": {
+            "inputs": {
+                "guidance": 3.5,
+                "conditioning": ["6", 0]
+            },
+            "class_type": "FluxGuidance",
+            "_meta": {"title": "Flux Guidance"}
+        }
+    }
+
+
 class handler(BaseHTTPRequestHandler):
     """
     Vercel serverless function handler.
@@ -38,9 +256,10 @@ class handler(BaseHTTPRequestHandler):
             body = self.rfile.read(content_length)
             data = json.loads(body.decode('utf-8'))
 
-            # Get the prompt and style from the request
+            # Get the prompt, style, and model from the request
             prompt = data.get('prompt', '').strip()
             style = data.get('style', 'frida')
+            model = data.get('model', 'sdxl-turbo')  # Default to cheapest model
 
             if not prompt:
                 self.send_error_response("Please provide a prompt!", 400)
@@ -64,100 +283,21 @@ class handler(BaseHTTPRequestHandler):
             # Enhance prompt with Mexican art style
             enhanced_prompt = enhance_prompt_with_style(prompt, style)
 
-            # Prepare the ComfyUI workflow for Flux Schnell
-            # This is based on the official RunPod ComfyUI worker format
+            # Select workflow based on model
+            if model == 'sdxl-turbo':
+                workflow = get_sdxl_turbo_workflow(enhanced_prompt)
+            elif model == 'sdxl-lightning':
+                workflow = get_sdxl_lightning_workflow(enhanced_prompt)
+            elif model == 'flux-dev':
+                workflow = get_flux_dev_workflow(enhanced_prompt)
+            else:
+                # Default to cheapest model
+                workflow = get_sdxl_turbo_workflow(enhanced_prompt)
+
+            # Prepare the ComfyUI payload
             payload = {
                 "input": {
-                    "workflow": {
-                        "6": {
-                            "inputs": {
-                                "text": enhanced_prompt,
-                                "clip": ["30", 1]
-                            },
-                            "class_type": "CLIPTextEncode",
-                            "_meta": {
-                                "title": "CLIP Text Encode (Positive Prompt)"
-                            }
-                        },
-                        "8": {
-                            "inputs": {
-                                "samples": ["31", 0],
-                                "vae": ["30", 2]
-                            },
-                            "class_type": "VAEDecode",
-                            "_meta": {
-                                "title": "VAE Decode"
-                            }
-                        },
-                        "9": {
-                            "inputs": {
-                                "filename_prefix": "maia_art",
-                                "images": ["8", 0]
-                            },
-                            "class_type": "SaveImage",
-                            "_meta": {
-                                "title": "Save Image"
-                            }
-                        },
-                        "27": {
-                            "inputs": {
-                                "width": 1024,
-                                "height": 1024,
-                                "batch_size": 1
-                            },
-                            "class_type": "EmptySD3LatentImage",
-                            "_meta": {
-                                "title": "Empty Latent Image"
-                            }
-                        },
-                        "30": {
-                            "inputs": {
-                                "ckpt_name": "flux1-dev-fp8.safetensors"
-                            },
-                            "class_type": "CheckpointLoaderSimple",
-                            "_meta": {
-                                "title": "Load Checkpoint"
-                            }
-                        },
-                        "31": {
-                            "inputs": {
-                                "seed": int(time.time()),
-                                "steps": 20,
-                                "cfg": 1.0,
-                                "sampler_name": "euler",
-                                "scheduler": "simple",
-                                "denoise": 1.0,
-                                "model": ["30", 0],
-                                "positive": ["35", 0],
-                                "negative": ["33", 0],
-                                "latent_image": ["27", 0]
-                            },
-                            "class_type": "KSampler",
-                            "_meta": {
-                                "title": "KSampler"
-                            }
-                        },
-                        "33": {
-                            "inputs": {
-                                "text": "",
-                                "clip": ["30", 1]
-                            },
-                            "class_type": "CLIPTextEncode",
-                            "_meta": {
-                                "title": "CLIP Text Encode (Negative Prompt)"
-                            }
-                        },
-                        "35": {
-                            "inputs": {
-                                "guidance": 3.5,
-                                "conditioning": ["6", 0]
-                            },
-                            "class_type": "FluxGuidance",
-                            "_meta": {
-                                "title": "Flux Guidance"
-                            }
-                        }
-                    }
+                    "workflow": workflow
                 }
             }
 
