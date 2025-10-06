@@ -1,5 +1,10 @@
 {
+  "version": 2,
   "builds": [
+    {
+      "src": "web/index.html",
+      "use": "@vercel/static"
+    },
     {
       "src": "web/api/*.py",
       "use": "@vercel/python"
@@ -7,10 +12,12 @@
   ],
   "routes": [
     {
+      "src": "/",
+      "dest": "/web/index.html"
+    },
+    {
       "src": "/api/(.*)",
       "dest": "/web/api/$1.py"
     }
-  ],
-  "buildCommand": "cd web-app && npm install && npm run build",
-  "outputDirectory": "web-app/dist"
+  ]
 }
