@@ -29,3 +29,9 @@ generated_art_*.jpg
 
 # Vercel
 .vercel
+
+# RunPod CLI tool (downloaded, not part of project)
+runpodctl
+runpodctl.tar.gz
+CHANGELOG.md
+LICENSE
