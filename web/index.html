@@ -294,8 +294,25 @@
                 </div>
             </div>
 
-            <!-- Model Selector -->
+            <!-- Output Type Toggle -->
             <div class="style-selector">
+                <h2>What Do You Want to Create?</h2>
+                <div class="style-buttons">
+                    <button class="style-btn active" data-output="image">
+                        <span class="emoji">🎨</span>
+                        <div>Image</div>
+                        <small>Still Art</small>
+                    </button>
+                    <button class="style-btn" data-output="video">
+                        <span class="emoji">🎥</span>
+                        <div>Video</div>
+                        <small>Animated Art!</small>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Model Selector -->
+            <div class="style-selector" id="modelSelector">
                 <h2>Choose Your AI Model:</h2>
                 <div class="style-buttons">
                     <button class="style-btn active" data-model="sdxl-turbo">
@@ -355,8 +372,9 @@
             <!-- Result -->
             <div class="result-section">
                 <div class="result-image" id="resultImage">
-                    <h2>✨ Your Mexican Masterpiece! ✨</h2>
-                    <img id="generatedImage" src="" alt="Generated Art">
+                    <h2 id="resultTitle">✨ Your Mexican Masterpiece! ✨</h2>
+                    <img id="generatedImage" src="" alt="Generated Art" style="display: none;">
+                    <video id="generatedVideo" controls autoplay loop style="display: none; max-width: 100%; border-radius: 20px; box-shadow: 0 20px 60px rgba(255, 107, 157, 0.4); border: 5px solid #FFE66D;"></video>
                     <button class="save-btn" id="saveBtn" style="display: none;">
                         💾 Save Your Art! 💾
                     </button>
@@ -374,6 +392,7 @@
     <script>
         let selectedStyle = 'frida';
         let selectedModel = 'sdxl-turbo';  // Default to cheapest model
+        let selectedOutput = 'image';  // Default to image mode
 
         // Style selection
         document.querySelectorAll('.style-btn[data-style]').forEach(btn => {
@@ -390,6 +409,23 @@
                 document.querySelectorAll('.style-btn[data-model]').forEach(b => b.classList.remove('active'));
                 this.classList.add('active');
                 selectedModel = this.dataset.model;
+            });
+        });
+
+        // Output type selection (Image vs Video)
+        document.querySelectorAll('.style-btn[data-output]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.style-btn[data-output]').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                selectedOutput = this.dataset.output;
+
+                // Update button text
+                const generateBtn = document.getElementById('generateBtn');
+                if (selectedOutput === 'video') {
+                    generateBtn.innerHTML = '🎥 Generate Video! 🎥';
+                } else {
+                    generateBtn.innerHTML = '✨ Generate Art! ✨';
+                }
             });
         });
 
@@ -418,7 +454,10 @@
             this.disabled = true;
 
             try {
-                const response = await fetch('/api/generate', {
+                // Choose endpoint based on output type
+                const endpoint = selectedOutput === 'video' ? '/api/generate-video' : '/api/generate';
+
+                const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -426,7 +465,8 @@
                     body: JSON.stringify({
                         prompt: prompt,
                         style: selectedStyle,
-                        model: selectedModel
+                        model: selectedModel,
+                        outputType: selectedOutput
                     })
                 });
 
@@ -436,31 +476,53 @@
                     throw new Error(data.error || 'Failed to generate art');
                 }
 
-                // Display the image
+                // Display the result (image or video)
                 const img = document.getElementById('generatedImage');
+                const video = document.getElementById('generatedVideo');
+                const resultTitle = document.getElementById('resultTitle');
 
-                // Handle different image data formats
-                let imageData = data.image;
+                if (selectedOutput === 'video' && data.video) {
+                    // Handle video
+                    img.style.display = 'none';
+                    video.style.display = 'block';
+                    resultTitle.textContent = '🎥 Your Animated Masterpiece! 🎥';
 
-                // If it's an array, take the first element
-                if (Array.isArray(imageData)) {
-                    imageData = imageData[0];
-                }
-
-                // If it's an object, try to find the image property
-                if (typeof imageData === 'object' && imageData !== null) {
-                    imageData = imageData.image || imageData.data || JSON.stringify(imageData);
-                }
-
-                // Now handle as string
-                if (typeof imageData === 'string') {
-                    if (imageData.startsWith('data:')) {
-                        img.src = imageData;
-                    } else {
-                        img.src = `data:image/png;base64,${imageData}`;
+                    let videoData = data.video;
+                    if (typeof videoData === 'string') {
+                        if (videoData.startsWith('data:')) {
+                            video.src = videoData;
+                        } else {
+                            video.src = `data:video/mp4;base64,${videoData}`;
+                        }
                     }
                 } else {
-                    throw new Error(`Unexpected image format: ${typeof imageData}`);
+                    // Handle image
+                    video.style.display = 'none';
+                    img.style.display = 'block';
+                    resultTitle.textContent = '✨ Your Mexican Masterpiece! ✨';
+
+                    let imageData = data.image;
+
+                    // If it's an array, take the first element
+                    if (Array.isArray(imageData)) {
+                        imageData = imageData[0];
+                    }
+
+                    // If it's an object, try to find the image property
+                    if (typeof imageData === 'object' && imageData !== null) {
+                        imageData = imageData.image || imageData.data || JSON.stringify(imageData);
+                    }
+
+                    // Now handle as string
+                    if (typeof imageData === 'string') {
+                        if (imageData.startsWith('data:')) {
+                            img.src = imageData;
+                        } else {
+                            img.src = `data:image/png;base64,${imageData}`;
+                        }
+                    } else {
+                        throw new Error(`Unexpected image format: ${typeof imageData}`);
+                    }
                 }
 
                 document.getElementById('resultImage').classList.add('active');
