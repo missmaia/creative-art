@@ -482,17 +482,36 @@
                 const resultTitle = document.getElementById('resultTitle');
 
                 if (selectedOutput === 'video' && data.video) {
-                    // Handle video
-                    img.style.display = 'none';
-                    video.style.display = 'block';
-                    resultTitle.textContent = '🎥 Your Animated Masterpiece! 🎥';
-
+                    // Handle video - currently returns image since AnimateDiff not installed
                     let videoData = data.video;
-                    if (typeof videoData === 'string') {
+
+                    // Check if it's actually image data (starts with iVBOR for PNG)
+                    let isImageData = typeof videoData === 'string' &&
+                                     (videoData.startsWith('iVBOR') || videoData.startsWith('/9j/'));
+
+                    if (isImageData) {
+                        // Display as image for now (AnimateDiff not installed yet)
+                        video.style.display = 'none';
+                        img.style.display = 'block';
+                        resultTitle.textContent = '🎨 Your Art! (Video coming soon!) 🎨';
+
                         if (videoData.startsWith('data:')) {
-                            video.src = videoData;
+                            img.src = videoData;
                         } else {
-                            video.src = `data:video/mp4;base64,${videoData}`;
+                            img.src = `data:image/png;base64,${videoData}`;
+                        }
+                    } else {
+                        // True video data
+                        img.style.display = 'none';
+                        video.style.display = 'block';
+                        resultTitle.textContent = '🎥 Your Animated Masterpiece! 🎥';
+
+                        if (typeof videoData === 'string') {
+                            if (videoData.startsWith('data:')) {
+                                video.src = videoData;
+                            } else {
+                                video.src = `data:video/mp4;base64,${videoData}`;
+                            }
                         }
                     }
                 } else {

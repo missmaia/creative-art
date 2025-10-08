@@ -26,60 +26,25 @@ def enhance_prompt_with_style(prompt, style="frida"):
 
 
 def get_animatediff_workflow(enhanced_prompt):
-    """Generate ComfyUI workflow for AnimateDiff (text-to-video)."""
+    """Generate ComfyUI workflow for video generation using Flux Dev.
+
+    Note: Currently generates a single high-quality image (not animated)
+    since AnimateDiff models are not installed on RunPod.
+    For true animated videos, install AnimateDiff checkpoints on RunPod.
+    """
     return {
         "6": {
             "inputs": {
                 "text": enhanced_prompt,
-                "clip": ["4", 1]
+                "clip": ["30", 1]
             },
             "class_type": "CLIPTextEncode",
             "_meta": {"title": "CLIP Text Encode (Positive)"}
         },
-        "7": {
-            "inputs": {
-                "text": "blurry, low quality, distorted, static, frozen",
-                "clip": ["4", 1]
-            },
-            "class_type": "CLIPTextEncode",
-            "_meta": {"title": "CLIP Text Encode (Negative)"}
-        },
-        "3": {
-            "inputs": {
-                "seed": int(time.time()),
-                "steps": 25,  # AnimateDiff needs more steps
-                "cfg": 7.5,
-                "sampler_name": "euler",
-                "scheduler": "normal",
-                "denoise": 1.0,
-                "model": ["4", 0],
-                "positive": ["6", 0],
-                "negative": ["7", 0],
-                "latent_image": ["5", 0]
-            },
-            "class_type": "KSampler",
-            "_meta": {"title": "KSampler"}
-        },
-        "4": {
-            "inputs": {
-                "ckpt_name": "sd_v15_mm_sd_v15.ckpt"  # AnimateDiff checkpoint
-            },
-            "class_type": "CheckpointLoaderSimple",
-            "_meta": {"title": "Load Checkpoint"}
-        },
-        "5": {
-            "inputs": {
-                "width": 512,
-                "height": 512,
-                "batch_size": 16  # Number of frames
-            },
-            "class_type": "EmptyLatentImage",
-            "_meta": {"title": "Empty Latent Image"}
-        },
         "8": {
             "inputs": {
-                "samples": ["3", 0],
-                "vae": ["4", 2]
+                "samples": ["31", 0],
+                "vae": ["30", 2]
             },
             "class_type": "VAEDecode",
             "_meta": {"title": "VAE Decode"}
@@ -91,6 +56,54 @@ def get_animatediff_workflow(enhanced_prompt):
             },
             "class_type": "SaveImage",
             "_meta": {"title": "Save Video"}
+        },
+        "27": {
+            "inputs": {
+                "width": 1024,
+                "height": 1024,
+                "batch_size": 1  # Single frame (not animated until AnimateDiff is installed)
+            },
+            "class_type": "EmptySD3LatentImage",
+            "_meta": {"title": "Empty Latent Image"}
+        },
+        "30": {
+            "inputs": {
+                "ckpt_name": "flux1-dev-fp8.safetensors"  # Using Flux Dev (available on RunPod)
+            },
+            "class_type": "CheckpointLoaderSimple",
+            "_meta": {"title": "Load Checkpoint"}
+        },
+        "31": {
+            "inputs": {
+                "seed": int(time.time()),
+                "steps": 20,  # Flux Dev optimal steps
+                "cfg": 1.0,  # Flux uses low CFG
+                "sampler_name": "euler",
+                "scheduler": "simple",
+                "denoise": 1.0,
+                "model": ["30", 0],
+                "positive": ["35", 0],
+                "negative": ["33", 0],
+                "latent_image": ["27", 0]
+            },
+            "class_type": "KSampler",
+            "_meta": {"title": "KSampler"}
+        },
+        "33": {
+            "inputs": {
+                "text": "",  # Flux works best with empty negative prompt
+                "clip": ["30", 1]
+            },
+            "class_type": "CLIPTextEncode",
+            "_meta": {"title": "CLIP Text Encode (Negative)"}
+        },
+        "35": {
+            "inputs": {
+                "guidance": 3.5,  # FluxGuidance parameter
+                "conditioning": ["6", 0]
+            },
+            "class_type": "FluxGuidance",
+            "_meta": {"title": "Flux Guidance"}
         }
     }
 
@@ -194,14 +207,18 @@ class handler(BaseHTTPRequestHandler):
                 )
                 return
 
-            # Extract video from response
+            # Extract video/image from response
+            # Note: Currently generates images (not animated videos) using Flux Dev
             video_data = None
 
             if "output" in result_data:
                 output = result_data["output"]
 
                 if isinstance(output, dict):
-                    if "video" in output:
+                    # Check for images array (ComfyUI SaveImage output)
+                    if "images" in output:
+                        video_data = output["images"]
+                    elif "video" in output:
                         video_data = output["video"]
                     elif "message" in output:
                         video_data = output["message"]
@@ -213,10 +230,16 @@ class handler(BaseHTTPRequestHandler):
                 elif isinstance(output, str):
                     video_data = output
 
+            # Handle array responses (from SaveImage node)
+            if isinstance(video_data, list) and len(video_data) > 0:
+                video_data = video_data[0]
+
             # Extract from nested dict if needed
             if isinstance(video_data, dict):
                 if "data" in video_data:
                     video_data = video_data["data"]
+                elif "image" in video_data:
+                    video_data = video_data["image"]
                 elif "video" in video_data:
                     video_data = video_data["video"]
 
