@@ -308,23 +308,58 @@ class handler(BaseHTTPRequestHandler):
                 "Content-Type": "application/json"
             }
 
-            # Send the request
-            try:
-                response = requests.post(
-                    api_url,
-                    json=payload,
-                    headers=headers,
-                    timeout=300  # 5 minute timeout for image generation
-                )
-            except requests.exceptions.Timeout:
+            # Send the request with retry logic for cold starts
+            max_retries = 3
+            retry_count = 0
+            response = None
+
+            while retry_count < max_retries:
+                try:
+                    print(f"Attempt {retry_count + 1}/{max_retries}: Sending request to RunPod...")
+                    response = requests.post(
+                        api_url,
+                        json=payload,
+                        headers=headers,
+                        timeout=90  # 90 second timeout per attempt
+                    )
+
+                    # If we get a response, break out of retry loop
+                    if response.status_code == 200:
+                        result_data = response.json()
+                        # Check if it's still in queue
+                        if result_data.get("status") == "IN_QUEUE":
+                            print(f"Still in queue, retrying in 10 seconds...")
+                            time.sleep(10)
+                            retry_count += 1
+                            continue
+                        # If we got actual output, we're done!
+                        break
+                    else:
+                        # Non-200 status, break and handle error below
+                        break
+
+                except requests.exceptions.Timeout:
+                    retry_count += 1
+                    if retry_count < max_retries:
+                        print(f"Timeout, retrying... ({retry_count}/{max_retries})")
+                        time.sleep(5)
+                        continue
+                    else:
+                        self.send_error_response(
+                            "Request timed out after 3 attempts. Your RunPod endpoint might be starting up. Please wait 30 seconds and try again!",
+                            500
+                        )
+                        return
+                except Exception as e:
+                    self.send_error_response(
+                        f"Request failed: {str(e)}",
+                        500
+                    )
+                    return
+
+            if response is None:
                 self.send_error_response(
-                    "Request timed out. The endpoint might be cold-starting. Please try again!",
-                    500
-                )
-                return
-            except Exception as e:
-                self.send_error_response(
-                    f"Request failed: {str(e)}",
+                    "Failed to get response from RunPod after retries. Please check that your endpoint has active workers!",
                     500
                 )
                 return
@@ -344,15 +379,16 @@ class handler(BaseHTTPRequestHandler):
                 )
                 return
 
-            # Parse the response
-            try:
-                result_data = response.json()
-            except json.JSONDecodeError:
-                self.send_error_response(
-                    f"Invalid JSON response: {response.text[:200]}",
-                    500
-                )
-                return
+            # Parse the response (if we haven't already in the retry loop)
+            if 'result_data' not in dir():
+                try:
+                    result_data = response.json()
+                except json.JSONDecodeError:
+                    self.send_error_response(
+                        f"Invalid JSON response: {response.text[:200]}",
+                        500
+                    )
+                    return
 
             # Extract image from ComfyUI response
             image_data = None
@@ -396,7 +432,7 @@ class handler(BaseHTTPRequestHandler):
 
             if not image_data or not isinstance(image_data, str):
                 self.send_error_response(
-                    f"No image in response. Full response structure: {json.dumps(result_data, indent=2)[:1000]}",
+                    f"🌟 The AI is waking up! Your RunPod endpoint has no active workers right now. This means the first request takes 30-60 seconds to start up. Please wait a minute and try again! If this keeps happening, go to runpod.io/console/serverless and set 'Min Workers' to 1. (Debug info: {json.dumps(result_data, indent=2)[:500]})",
                     500
                 )
                 return
