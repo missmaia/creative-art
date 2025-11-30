@@ -1,56 +1,75 @@
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, Palette, Heart, Loader2, Download } from 'lucide-react'
+import { Sparkles, Palette, Heart, Loader2, Download, Camera, Upload, RefreshCw } from 'lucide-react'
+import Webcam from 'react-webcam'
 import './App.css'
 
-const MEXICAN_STYLES = [
+const CELEBRITY_GENDERS = [
   {
-    id: 'frida',
-    name: 'Frida Kahlo',
-    emoji: '🌺',
-    description: 'Vibrant & Nature',
-    color: 'from-pink-500 to-rose-500'
+    id: 'Female',
+    name: 'Female Icons',
+    emoji: '👩',
+    description: 'Meet Frida, Salma, Thalía & More!',
+    color: 'from-pink-500 to-rose-500',
+    examples: ['Frida Kahlo', 'Salma Hayek', 'Thalía', 'María Félix']
   },
   {
-    id: 'mural',
-    name: 'Muralist',
-    emoji: '🎭',
-    description: 'Bold & Cultural',
-    color: 'from-purple-500 to-indigo-500'
-  },
-  {
-    id: 'folk',
-    name: 'Folk Art',
-    emoji: '🎪',
-    description: 'Traditional & Festive',
-    color: 'from-yellow-500 to-orange-500'
+    id: 'Male',
+    name: 'Male Icons',
+    emoji: '👨',
+    description: 'Meet Diego, Canelo, Cantinflas & More!',
+    color: 'from-blue-500 to-indigo-500',
+    examples: ['Diego Rivera', 'Cantinflas', 'Canelo Álvarez', 'Carlos Santana']
   }
 ]
 
-const EXAMPLE_PROMPTS = [
-  'a garden with butterflies and monarch wings',
-  'self-portrait with sunflowers',
-  'Day of the Dead celebration altar',
-  'magical forest with exotic animals',
-  'traditional fiesta with papel picado'
-]
-
 function App() {
-  const [selectedStyle, setSelectedStyle] = useState('frida')
-  const [prompt, setPrompt] = useState('')
+  const [selectedGender, setSelectedGender] = useState('Female')
+  const [capturedImage, setCapturedImage] = useState(null)
+  const [showWebcam, setShowWebcam] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedImage, setGeneratedImage] = useState(null)
+  const [selectedCelebrity, setSelectedCelebrity] = useState(null)
   const [error, setError] = useState(null)
+  const webcamRef = useRef(null)
+  const fileInputRef = useRef(null)
+
+  const capturePhoto = useCallback(() => {
+    const imageSrc = webcamRef.current.getScreenshot()
+    setCapturedImage(imageSrc)
+    setShowWebcam(false)
+  }, [webcamRef])
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0]
+    if (file && file.type.startsWith('image/')) {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setCapturedImage(reader.result)
+      }
+      reader.readAsDataURL(file)
+    } else {
+      alert('Please select a valid image file!')
+    }
+  }
+
+  const retakeSelfie = () => {
+    setCapturedImage(null)
+    setGeneratedImage(null)
+    setSelectedCelebrity(null)
+    setError(null)
+  }
 
   const handleGenerate = async () => {
-    if (!prompt.trim()) {
-      alert('Please enter what you want to create!')
+    if (!capturedImage) {
+      alert('Please take a selfie or upload a photo first!')
       return
     }
 
     setIsGenerating(true)
     setError(null)
     setGeneratedImage(null)
+    setSelectedCelebrity(null)
 
     try {
       const response = await fetch('/api/generate', {
@@ -59,37 +78,26 @@ function App() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          prompt: prompt,
-          style: selectedStyle
+          image: capturedImage,
+          gender: selectedGender
         })
       })
 
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to generate art')
+        throw new Error(data.error || 'Failed to generate image')
       }
 
-      // Handle different image data formats
+      // Handle image response
       let imageData = data.image
-
-      if (Array.isArray(imageData)) {
-        imageData = imageData[0]
-      }
-
-      if (typeof imageData === 'object' && imageData !== null) {
-        imageData = imageData.image || imageData.data
-      }
-
-      if (typeof imageData === 'string') {
-        if (imageData.startsWith('data:')) {
-          setGeneratedImage(imageData)
-        } else {
-          setGeneratedImage(`data:image/png;base64,${imageData}`)
-        }
+      if (imageData.startsWith('data:')) {
+        setGeneratedImage(imageData)
       } else {
-        throw new Error(`Unexpected image format: ${typeof imageData}`)
+        setGeneratedImage(`data:image/png;base64,${imageData}`)
       }
+
+      setSelectedCelebrity(data.celebrity || data.fullCelebrity || 'a Mexican Celebrity')
 
     } catch (err) {
       setError(err.message)
@@ -104,7 +112,7 @@ function App() {
 
     const link = document.createElement('a')
     link.href = generatedImage
-    link.download = `maia-mexican-art-${Date.now()}.png`
+    link.download = `viva-la-selfie-${selectedCelebrity?.replace(/\s+/g, '-')}-${Date.now()}.png`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -133,14 +141,17 @@ function App() {
               backgroundClip: 'text'
             }}
           >
-            🎨 Maia's Art Machine 🌻
+            📸 Viva La Selfie! 🌟
           </motion.h1>
           <p className="text-xl text-gray-700 font-medium">
-            Create beautiful AI art inspired by Frida Kahlo & Mexican Folk Art!
+            Take a selfie and see yourself with famous Mexican celebrities!
+          </p>
+          <p className="text-sm text-gray-500 mt-2">
+            Powered by Nano Banana Pro 🍌 (Google Gemini + Fal.ai)
           </p>
         </motion.div>
 
-        {/* Style Selector */}
+        {/* Gender Selector */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -149,35 +160,38 @@ function App() {
         >
           <h2 className="text-2xl font-bold text-center mb-4 text-gray-800 flex items-center justify-center gap-2">
             <Palette className="w-6 h-6" />
-            Choose Your Art Style:
+            Choose Celebrity Gender:
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {MEXICAN_STYLES.map((style, index) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {CELEBRITY_GENDERS.map((gender, index) => (
               <motion.button
-                key={style.id}
+                key={gender.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 + index * 0.1 }}
                 whileHover={{ scale: 1.05, y: -4 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => setSelectedStyle(style.id)}
+                onClick={() => setSelectedGender(gender.id)}
                 className={`p-6 rounded-2xl transition-all duration-300 ${
-                  selectedStyle === style.id
-                    ? `bg-gradient-to-br ${style.color} text-white shadow-2xl ring-4 ring-white`
+                  selectedGender === gender.id
+                    ? `bg-gradient-to-br ${gender.color} text-white shadow-2xl ring-4 ring-white`
                     : 'bg-white text-gray-800 shadow-lg hover:shadow-xl'
                 }`}
               >
-                <div className="text-5xl mb-2">{style.emoji}</div>
-                <div className="font-bold text-lg">{style.name}</div>
-                <div className={`text-sm ${selectedStyle === style.id ? 'text-white' : 'text-gray-500'}`}>
-                  {style.description}
+                <div className="text-5xl mb-2">{gender.emoji}</div>
+                <div className="font-bold text-lg">{gender.name}</div>
+                <div className={`text-sm ${selectedGender === gender.id ? 'text-white' : 'text-gray-500'}`}>
+                  {gender.description}
+                </div>
+                <div className={`text-xs mt-2 ${selectedGender === gender.id ? 'text-white/80' : 'text-gray-400'}`}>
+                  {gender.examples.slice(0, 2).join(', ')}...
                 </div>
               </motion.button>
             ))}
           </div>
         </motion.div>
 
-        {/* Prompt Input */}
+        {/* Selfie Capture Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -185,33 +199,104 @@ function App() {
           className="mb-6"
         >
           <h2 className="text-2xl font-bold mb-3 text-gray-800 flex items-center gap-2">
-            <Sparkles className="w-6 h-6 text-yellow-500" />
-            What Do You Want to Create?
+            <Camera className="w-6 h-6 text-blue-500" />
+            Take or Upload Your Selfie:
           </h2>
-          <textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Describe your art idea... (e.g., 'a garden with butterflies and flowers')"
-            className="w-full p-4 rounded-xl border-4 border-yellow-300 focus:border-pink-400 focus:outline-none focus:ring-4 focus:ring-pink-200 transition-all duration-300 text-lg resize-none h-32 shadow-lg"
-          />
 
-          {/* Example Prompts */}
-          <div className="mt-4">
-            <p className="text-sm font-semibold text-gray-700 mb-2">Click for inspiration:</p>
-            <div className="flex flex-wrap gap-2">
-              {EXAMPLE_PROMPTS.map((example, index) => (
+          {/* No image captured yet */}
+          {!capturedImage && !showWebcam && (
+            <div className="flex flex-col md:flex-row gap-4">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowWebcam(true)}
+                className="flex-1 py-6 rounded-2xl bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-xl font-bold shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-3"
+              >
+                <Camera className="w-8 h-8" />
+                Take Selfie
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => fileInputRef.current.click()}
+                className="flex-1 py-6 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xl font-bold shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-3"
+              >
+                <Upload className="w-8 h-8" />
+                Upload Photo
+              </motion.button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+            </div>
+          )}
+
+          {/* Webcam active */}
+          {showWebcam && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="space-y-4"
+            >
+              <div className="rounded-2xl overflow-hidden shadow-2xl border-4 border-blue-300">
+                <Webcam
+                  ref={webcamRef}
+                  audio={false}
+                  screenshotFormat="image/jpeg"
+                  videoConstraints={{
+                    width: 1280,
+                    height: 720,
+                    facingMode: "user"
+                  }}
+                  className="w-full"
+                />
+              </div>
+              <div className="flex gap-4">
                 <motion.button
-                  key={index}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => setPrompt(example)}
-                  className="px-4 py-2 bg-white rounded-full text-sm font-medium text-gray-700 hover:bg-gradient-to-r hover:from-pink-400 hover:to-yellow-400 hover:text-white transition-all duration-300 shadow-md hover:shadow-lg"
+                  onClick={capturePhoto}
+                  className="flex-1 py-4 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 text-white text-lg font-bold shadow-lg"
                 >
-                  {example}
+                  📸 Capture Photo
                 </motion.button>
-              ))}
-            </div>
-          </div>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowWebcam(false)}
+                  className="flex-1 py-4 rounded-xl bg-gray-500 text-white text-lg font-bold shadow-lg"
+                >
+                  Cancel
+                </motion.button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Image captured */}
+          {capturedImage && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="space-y-4"
+            >
+              <div className="rounded-2xl overflow-hidden shadow-2xl border-4 border-green-300">
+                <img src={capturedImage} alt="Your selfie" className="w-full" />
+              </div>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={retakeSelfie}
+                className="w-full py-4 rounded-xl bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-lg font-bold shadow-lg flex items-center justify-center gap-2"
+              >
+                <RefreshCw className="w-6 h-6" />
+                Retake Selfie
+              </motion.button>
+            </motion.div>
+          )}
         </motion.div>
 
         {/* Generate Button */}
@@ -219,18 +304,18 @@ function App() {
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={handleGenerate}
-          disabled={isGenerating}
+          disabled={isGenerating || !capturedImage}
           className="w-full py-6 rounded-2xl text-2xl font-bold text-white mexican-gradient shadow-2xl hover:shadow-3xl transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-3"
         >
           {isGenerating ? (
             <>
               <Loader2 className="w-8 h-8 animate-spin" />
-              Creating your masterpiece...
+              Creating your celebrity selfie...
             </>
           ) : (
             <>
               <Sparkles className="w-8 h-8" />
-              Generate Art!
+              Generate Celebrity Selfie!
               <Sparkles className="w-8 h-8" />
             </>
           )}
@@ -251,10 +336,13 @@ function App() {
                 className="w-20 h-20 mx-auto mb-4 border-8 border-pink-300 border-t-pink-600 rounded-full"
               />
               <h3 className="text-2xl font-bold text-gray-800 mb-2">
-                🎨 Creating your masterpiece...
+                🎨 Creating your celebrity selfie...
               </h3>
               <p className="text-gray-600">
-                This may take 30-60 seconds. The AI is painting!
+                Step 1: Nano Banana Pro (Gemini) is analyzing your photo... 👀<br/>
+                Step 2: Picking the perfect celebrity... 🎭<br/>
+                Step 3: Generating your photo together... ✨<br/>
+                This takes 30-60 seconds total!
               </p>
             </motion.div>
           )}
@@ -273,6 +361,11 @@ function App() {
                 😞 Oops! Something went wrong.
               </h3>
               <p className="text-red-700">{error}</p>
+              {error.includes('API') && (
+                <p className="text-red-600 text-sm mt-2">
+                  💡 Make sure you've added your API keys to the .env file!
+                </p>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -293,7 +386,7 @@ function App() {
                 className="text-3xl font-bold text-center mb-6 text-gray-800 flex items-center justify-center gap-3"
               >
                 <Sparkles className="w-8 h-8 text-yellow-500" />
-                Your Mexican Masterpiece!
+                You & {selectedCelebrity}! 🌟
                 <Sparkles className="w-8 h-8 text-yellow-500" />
               </motion.h2>
               <motion.div
@@ -302,7 +395,7 @@ function App() {
               >
                 <img
                   src={generatedImage}
-                  alt="Generated Mexican Art"
+                  alt={`You with ${selectedCelebrity}`}
                   className="w-full h-auto"
                 />
               </motion.div>
@@ -318,7 +411,7 @@ function App() {
                 className="mt-6 px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center justify-center gap-3 mx-auto"
               >
                 <Download className="w-6 h-6" />
-                Save Your Masterpiece!
+                Save Your Celebrity Selfie!
                 <Download className="w-6 h-6" />
               </motion.button>
             </motion.div>
@@ -335,8 +428,8 @@ function App() {
           <p className="flex items-center justify-center gap-2">
             Built with <Heart className="w-4 h-4 text-red-500 fill-red-500" /> by Maia (Age 8!)
           </p>
-          <p>Powered by RunPod AI & Flux Model</p>
-          <p>🌟 Learning to code and create art! 🌟</p>
+          <p>Powered by Google Gemini (Nano Banana Pro) & Fal.ai Flux Dev</p>
+          <p>🌟 Learning to code and create magic! 🌟</p>
         </motion.div>
       </div>
     </div>
